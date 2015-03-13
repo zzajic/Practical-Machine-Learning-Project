@@ -45,7 +45,7 @@ testing <- testing[,!(names(testing) %in% drops)]
 #delete boring columns
 training <- training[,8:length(colnames(training))]
 testing <- testing[,8:length(colnames(testing))]
-colnames_train->colnames(training)
+colnames_train<-colnames(training)
 ```
 
 Split training data into tr and dev
@@ -56,7 +56,7 @@ dev <- training[-inTrain, ]
 ```
 
 # Modeling
-Decision Tree
+## Decision Tree
 ```{r}
 library(caret)
 library(rattle)
@@ -68,24 +68,42 @@ fancyRpartPlot(modFitDT$finalModel)
 pred <- predict(modFitDT, newdata=dev)
 print(confusionMatrix(pred, dev$classe))
 ```
+The results on development data is wery poor (acc~50%)
+
+
 Important variables
 ```{r}
 varImp(modFitDT$finalModel)
 ```
+
 Only few are important and it is movement in tree axes (xyz) -> try to find only 2 importatnt pca features
 ```{r}
 PCAf<- preProcess(tr[,-length(tr)], method="pca", pcaComp = 2)
 trPCA<-predict(PCAf,tr[,-length(tr)])
 plot(trPCA,col=tr$classe)
 ```
-in the figure there is no pattern, so try 10 pcaComp
+in the figure there is no pattern, so try 10 pcaComp an train a Desision Tree on them
 ```{r}
-PCAf<- preProcess(tr[,-length(tr)], method="pca", pcaComp = 10)
-trPCA<-predict(PCAf,tr[,-length(tr)])
+PCAf10<- preProcess(tr[,-length(tr)], method="pca", pcaComp = 10)
+trPCA10<-predict(PCAf10,tr[,-length(tr)])
+modFitDTPCA10 <- train(tr$classe ~ .,method='rpart', data=trPCA10)
+devPCA10<-predict(PCAf10,dev[,-length(dev)])
+pred <- predict(modFitDTPCA10, newdata=devPCA10)
+print(confusionMatrix(pred, dev$classe))
 ```
+Now the ACC~0.37, it is worst
 
 
-Random Ferest
+## Random Ferest
+Time consuming computeation -> small trainning dataset
 ```{r}
-modFitRF<-train(classe~.,method='rf', data=tr, prox=TRUE)
+inTrain <- createDataPartition(y=tr$classe, p=0.2, list=FALSE)
+tr_small <- tr[inTrain, ]; 
+modFitRF_small<-train(classe~.,method='rf', data=tr_small, prox=TRUE)
+#prediction from development data
+pred <- predict(modFitRF_small, newdata=dev)
+print(confusionMatrix(pred, dev$classe))
 ```
+Now the ACC~0.90 on development data
+
+# Prediction testing data with Random Ferest
