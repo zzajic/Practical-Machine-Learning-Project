@@ -1,0 +1,91 @@
+---
+title: "Practical Machine Learning"
+author: "Zbynìk Zajíc"
+date: "Friday, March 13, 2015"
+output: pdf_document
+---
+# Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks... More information is available from the website here: <http://groupware.les.inf.puc-rio.br/har> (see the section on the Weight Lifting Exercise Dataset). 
+
+# Goal
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+
+# Data
+```{r}
+url_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+file_training <- "pml-training.csv"
+download.file(url=url_training, destfile=file_training, method="curl")
+url_testing <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+file_testing <- "pml-testing.csv"
+download.file(url=url_testing, destfile=file_testing, method="curl")
+training<-read.csv("pml-training.csv",na.strings=c("NA",""), header=TRUE)
+testing<-read.csv("pml-testing.csv",na.strings=c("NA",""), header=TRUE)
+```
+
+# Preprocessing
+Some of the columns are drasticaly fuyll of missing data, these columns will be deleted
+```{r}
+colnames_train->colnames(training)
+nonNAs <- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(!is.na(x)))))
+}
+colcnts <- nonNAs(training)
+drops <- c()
+for (cnt in 1:length(colcnts)) {
+    if (colcnts[cnt] < nrow(training)) {
+        drops <- c(drops, colnames_train[cnt])
+    }
+}
+
+
+training <- training[,!(names(training) %in% drops)]
+testing <- testing[,!(names(testing) %in% drops)]
+
+#delete boring columns
+training <- training[,8:length(colnames(training))]
+testing <- testing[,8:length(colnames(testing))]
+colnames_train->colnames(training)
+```
+
+Split training data into tr and dev
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+tr <- training[inTrain, ]; 
+dev <- training[-inTrain, ]
+```
+
+# Modeling
+Decision Tree
+```{r}
+library(caret)
+library(rattle)
+library(rpart.plot)
+set.seed(123)
+modFitDT <- train(classe ~ .,method='rpart', data=tr)
+fancyRpartPlot(modFitDT$finalModel)
+#prediction from development data
+pred <- predict(modFitDT, newdata=dev)
+print(confusionMatrix(pred, dev$classe))
+```
+Important variables
+```{r}
+varImp(modFitDT$finalModel)
+```
+Only few are important and it is movement in tree axes (xyz) -> try to find only 2 importatnt pca features
+```{r}
+PCAf<- preProcess(tr[,-length(tr)], method="pca", pcaComp = 2)
+trPCA<-predict(PCAf,tr[,-length(tr)])
+plot(trPCA,col=tr$classe)
+```
+in the figure there is no pattern, so try 10 pcaComp
+```{r}
+PCAf<- preProcess(tr[,-length(tr)], method="pca", pcaComp = 10)
+trPCA<-predict(PCAf,tr[,-length(tr)])
+```
+
+
+Random Ferest
+```{r}
+modFitRF<-train(classe~.,method='rf', data=tr, prox=TRUE)
+```
