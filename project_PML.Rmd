@@ -13,11 +13,6 @@ The goal of your project is to predict the manner in which they did the exercise
 
 # Data
 ```{r}
-library(caret)
-library(rattle)
-library(rpart.plot)
-set.seed(123)
-
 url_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 file_training <- "pml-training.csv"
 download.file(url=url_training, destfile=file_training, method="curl")
@@ -31,7 +26,7 @@ testing<-read.csv("pml-testing.csv",na.strings=c("NA",""), header=TRUE)
 # Preprocessing
 Some of the columns are drasticaly fuyll of missing data, these columns will be deleted
 ```{r}
-colnames_train<-colnames(training)
+colnames_train->colnames(training)
 nonNAs <- function(x) {
     as.vector(apply(x, 2, function(x) length(which(!is.na(x)))))
 }
@@ -63,6 +58,10 @@ dev <- training[-inTrain, ]
 # Modeling
 ## Decision Tree
 ```{r}
+library(caret)
+library(rattle)
+library(rpart.plot)
+set.seed(123)
 modFitDT <- train(classe ~ .,method='rpart', data=tr)
 fancyRpartPlot(modFitDT$finalModel)
 #prediction from development data
@@ -108,12 +107,3 @@ print(confusionMatrix(pred, dev$classe))
 Now the ACC~0.90 on development data
 
 # Prediction testing data with Random Ferest
-```{r}
-#prediction from development data
-pred <- predict(modFitRF_small, newdata=testing)
-print(pred)
-```
-
-
-
-
